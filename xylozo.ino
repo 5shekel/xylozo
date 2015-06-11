@@ -26,6 +26,9 @@ void setup() {
     radio.printDetails();                             // Dump the configuration of the rf unit for debugging
 
   }else if ( role == role_xylo )  { //setup remote pins
+    for(int iii=0; iii < 8; iii++)
+      pinMode(analogRead(iii), INPUT);
+
    radio.openWritingPipe(addresses[0]);
    radio.openReadingPipe(1,addresses[1]);
    radio.stopListening(); 
@@ -40,7 +43,11 @@ void loop() {
       piezoVal[iii] = lowByte(analogRead(iii)); 
       piezoVal[iii+1] = highByte(analogRead(iii)); 
       }
-  
+
+    for(int iii=0; iii < 8; iii++)
+      Serial<<analogRead(iii)<<" ";
+      
+  Serial.println();
     bool ok = radio.write(&piezoVal, sizeof(piezoVal));
     delay(20);
 
