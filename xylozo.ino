@@ -1,44 +1,45 @@
-    #include <Streaming.h>
-    
-    //midi lib http://arduinomidilib.fortyseveneffects.com/
-    //but using http://www.instructables.com/id/Send-and-Receive-MIDI-with-Arduino/
-    // beauce there some issues with software serial on the MIDI lib
-#define DEBUG 0
+  #include <Streaming.h>
+  #include "RF24.h" //http://tmrh20.github.io/ this is a manitned fork, the original is now radiohead
+  #include <SPI.h>
+  RF24 radio(7, 8);
+  typedef enum { role_xylo , role_hub } role_e;
+  role_e role = role_hub;// The role of the current running sketch
+  
+  byte addresses[][6] = {"1Node","2Node"};
 
- #define noteON 144//144 = 10010000 in binary, note on command
- #define noteOFF 128//128 = 10000000 in binary, note off command
- #define THRESH 50
 
- void setup() {
-   //this broke on my nano clones
-   // midiSerial.begin(31250);
-   Serial.begin(31250);
+  int sns00;
+
+void setup() {
+    radio.begin();
+   Serial.begin(115200);
+
+   if ( role == role_hub ) {  // Start listening
+   radio.openWritingPipe(addresses[1]);
+   radio.openReadingPipe(1,addresses[0]);
+   radio.startListening();
+ }
+
+  if ( role == role_xylo )  { //setup remote pins
+   radio.openWritingPipe(addresses[0]);
+   radio.openReadingPipe(1,addresses[1]);
+   radio.stopListening(); 
+ }
+
 }
 
 void loop() {
-
-    sendTrig(analogRead(A0), 50);
-    sendTrig(analogRead(A1), 51);
-/*
-    sendTrig(analogRead(A2), 52);
-    sendTrig(analogRead(A3), 53);
-    sendTrig(analogRead(A5), 54);
-    sendTrig(analogRead(A6), 55);
-    sendTrig(analogRead(A7), 56);
-*/
-}
-
-void sendTrig(int piezo, int note){
-    if(piezo > THRESH){
-            MIDImessage(noteON, note, piezo/4);//turn note on
-            delay(2);//hold note
-            MIDImessage(noteOFF, note, piezo/4);//turn note off  
+  if ( role == role_xylo)  {
+    sns00=analogRead(0);
+    bool ok = radio.write(&sns00, sizeof(int));
+    delay(1000);
+  }
+  if ( role == role_hub )
+   if ( radio.available() )
+    {
+      while(radio.available()){
+        radio.read(&sns00, sizeof(int));
+        Serial<<sns00<<endl;
+      }
     }
-}
-
-//send MIDI message
-void MIDImessage(int command, int MIDInote, int MIDIvelocity) {
-  Serial.write(command);//send note on or note off command 
-  Serial.write(MIDInote);//send pitch data
-  Serial.write(MIDIvelocity);//send velocity data
 }
